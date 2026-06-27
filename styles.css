@@ -672,10 +672,70 @@ main {
   }
 }
 
+.home-desc {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 @media (max-width: 480px) {
   .asset-list,
   .universe-list {
     grid-template-columns: 1fr;
+  }
+
+  .asset-card {
+    padding: 16px;
+  }
+
+  .asset-top h3 {
+    font-size: 18px;
+  }
+
+  .asset-top p {
+    font-size: 13px;
+  }
+
+  .quote-grid span {
+    font-size: 12px;
+  }
+
+  .quote-grid strong {
+    font-size: 16px;
+  }
+
+  .hero-price strong {
+    font-size: 22px;
+  }
+
+  .hero-price em {
+    font-size: 18px;
+  }
+
+  .hero-price span {
+    font-size: 12px;
+  }
+
+  .meta-row span {
+    font-size: 12px;
+  }
+
+  .card-timestamp {
+    font-size: 12px;
+  }
+
+  .detail-link {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
+  .status-strip strong {
+    font-size: 14px;
+  }
+
+  .status-strip span {
+    font-size: 12px;
   }
 }
 
