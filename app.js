@@ -2,6 +2,7 @@ const FALLBACK_FX_RATE = 1545;
 const API_TIMEOUT_MS = 8000;
 const CG_TOKEN_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price";
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
+const KRX_PROXY_URL = "https://krx-proxy.kangkuyun.workers.dev";
 
 let fxRate = FALLBACK_FX_RATE;
 let marketUpdatedAt = new Date().toISOString();
@@ -522,9 +523,7 @@ async function updateKrxPrices() {
 
   const results = await Promise.allSettled(
     targets.map((asset) =>
-      fetchJson(
-        `https://query2.finance.yahoo.com/v8/finance/chart/${asset.yahooSymbol}?interval=1d&range=1d`
-      ).then((data) => ({ asset, data }))
+      fetchJson(`${KRX_PROXY_URL}/?s=${asset.krxTicker}`).then((data) => ({ asset, data }))
     )
   );
 
