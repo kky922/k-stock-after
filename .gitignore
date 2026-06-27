@@ -1,0 +1,4 @@
+server.py
+.playwright-cli/
+*.md
+!README.md

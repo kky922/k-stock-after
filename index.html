@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101820" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="K-Stock After" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>온체인 코스피 모니터</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">K-Stock After</p>
+        <h1>온체인 코스피 모니터</h1>
+      </div>
+      <button id="refreshBtn" class="icon-button" type="button" title="새로고침" aria-label="새로고침">↻</button>
+    </header>
+
+    <main>
+      <div class="status-strip" aria-label="시장 요약">
+        <div><span>USD/KRW</span><strong id="fxRate">-</strong></div>
+        <div><span>KOSPI</span><strong id="krxState">-</strong></div>
+        <div><span>크립토</span><strong id="cryptoState">-</strong></div>
+        <div><span id="lastUpdated" style="font-size:11px;color:var(--muted)">-</span><strong id="fxSource" style="font-size:11px;color:var(--muted)">-</strong></div>
+      </div>
+      <p id="apiStatus" class="api-status">데이터 로딩 중...</p>
+
+      <section id="homeView" class="view is-active">
+        <div class="section-title">
+          <h2>코스피 외화시세 비교</h2>
+          <span id="lastUpdated">-</span>
+        </div>
+        <div id="assetList" class="asset-list"></div>
+      </section>
+
+      <section id="detailView" class="view">
+        <button id="backBtn" class="text-button" type="button">← 목록으로</button>
+        <div id="detailContent"></div>
+      </section>
+
+      <section id="universeView" class="view">
+        <div class="section-title">
+          <h2>상장 감시 리스트</h2>
+          <span>크립토거래소 상장 여부 추적</span>
+        </div>
+        <div id="universeList" class="universe-list"></div>
+      </section>
+
+      <section id="rankingView" class="view">
+        <div class="section-title">
+          <h2>괴리율 랭킹</h2>
+          <select id="rankSort" aria-label="정렬 방식">
+            <option value="abs">절대값 큰 순</option>
+            <option value="high">높은 순</option>
+            <option value="low">낮은 순</option>
+            <option value="volume">거래량 높은 순</option>
+            <option value="updated">업데이트 최신 순</option>
+          </select>
+        </div>
+        <div class="filter-row" role="group" aria-label="상품 필터">
+          <button class="chip is-active" data-filter="all" type="button">전체</button>
+          <button class="chip" data-filter="comparable" type="button">비교 가능</button>
+          <button class="chip" data-filter="confirmed" type="button">확인됨</button>
+          <button class="chip" data-filter="watch" type="button">상장 감시</button>
+        </div>
+        <ol id="rankingList" class="ranking-list"></ol>
+      </section>
+
+      <section id="watchlistView" class="view">
+        <div class="section-title">
+          <h2>내 관심종목</h2>
+          <span>브라우저에 저장됨</span>
+        </div>
+        <div id="watchlistList" class="asset-list"></div>
+      </section>
+
+      <section id="alertsView" class="view">
+        <div class="section-title">
+          <h2>알림 조건</h2>
+          <span>저장만 지원</span>
+        </div>
+        <form id="alertForm" class="alert-form">
+          <label>
+            종목
+            <select id="alertAsset"></select>
+          </label>
+          <label>
+            조건
+            <select id="alertCondition">
+              <option value="premium_rate_gte">괴리율 이상</option>
+              <option value="premium_rate_lte">괴리율 이하</option>
+              <option value="price_krw_gte">원화 환산가 이상</option>
+              <option value="price_krw_lte">원화 환산가 이하</option>
+              <option value="fx_gte">USD/KRW 이상</option>
+            </select>
+          </label>
+          <label>
+            기준값
+            <input id="alertThreshold" type="number" step="0.01" value="2" />
+          </label>
+          <button class="primary-button" type="submit">알림 저장</button>
+        </form>
+        <div id="alertList" class="alert-list"></div>
+      </section>
+
+      <section id="riskView" class="view">
+        <div class="risk-panel">
+          <h2>리스크 안내</h2>
+          <p>본 서비스는 시세 정보 제공용입니다.</p>
+          <p>표시되는 온체인/크립토 가격은 실제 한국거래소 주식 가격과 다를 수 있습니다.</p>
+          <p>Perp 상품은 실제 주식 소유권, 배당, 의결권을 제공하지 않을 수 있습니다.</p>
+          <p>유동성이 낮은 시장의 가격은 왜곡될 수 있습니다.</p>
+          <p>표시 가격은 참고용이며 투자 판단은 사용자 본인의 책임입니다.</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="화면 선택">
+      <button class="tab is-active" data-view="home" type="button"><span>홈</span></button>
+      <button class="tab" data-view="ranking" type="button"><span>랭킹</span></button>
+      <button class="tab" data-view="watchlist" type="button"><span>관심</span></button>
+      <button class="tab" data-view="alerts" type="button"><span>알림</span></button>
+      <button class="tab" data-view="universe" type="button"><span>리스트</span></button>
+      <button class="tab" data-view="risk" type="button"><span>리스크</span></button>
+    </nav>
+
+    <script src="./app.js" defer></script>
+    <script>
+      if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      }
+    </script>
+  </body>
+</html>
