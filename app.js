@@ -2,7 +2,7 @@ const FALLBACK_FX_RATE = 1545;
 const API_TIMEOUT_MS = 8000;
 const CG_TOKEN_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price";
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
-const KRX_PROXY_URL = "https://krx-proxy.kangkuyun.workers.dev";
+const KRX_PROXY_URL = "https://orange-sunset-3ab4.kangkuyun.workers.dev";
 
 let fxRate = FALLBACK_FX_RATE;
 let marketUpdatedAt = new Date().toISOString();
