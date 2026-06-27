@@ -1,51 +1,65 @@
-# 코스피 외화시세 비교 PWA
+# 온체인 코스피 모니터
 
-한국 코스피 원화시세와 크립토거래소 외화시세를 원화로 환산한 값을 비교하는 모바일 PWA입니다.
+한국 코스피 원화시세와 크립토거래소 외화 퍼페추얼 시세를 원화로 환산해 괴리율을 실시간 비교하는 모바일 PWA입니다.
 
-## 실행
+**라이브**: https://kstock-monitor.netlify.app
 
-```bash
-cd "/Volumes/X9Pro/projects/stock monitor"
-python3 server.py
+## 구조
+
+| 파일 | 역할 |
+|------|------|
+| `index.html` | UI 껍데기 |
+| `app.js` | 시세 수집 · 괴리율 계산 · 렌더링 |
+| `styles.css` | 스타일 |
+| `sw.js` | Service Worker (PWA 오프라인 캐시) |
+| `manifest.webmanifest` | PWA 메타데이터 |
+| `krx-worker.js` | Cloudflare Worker — Yahoo Finance CORS 프록시 |
+
+`server.py`는 개인 KIS API 키가 포함되어 git에 포함되지 않습니다.
+
+## 데이터 소스
+
+### KOSPI 원화시세
+Yahoo Finance (`query2.finance.yahoo.com`) — Cloudflare Worker 프록시를 통해 CORS 우회
+
+### 크립토 외화시세 (USD 퍼페추얼)
+우선순위 폴백 체인:
+1. **Binance Futures** `fapi.binance.com` — 배치 조회 (primary)
+2. **Bybit V5** `api.bybit.com` — 누락 종목 보완
+3. **OKX** `okx.com` — 추가 폴백
+4. **Hyperliquid** `api.hyperliquid.xyz` — HL 전용 심볼 (SKHX 등)
+5. **CoinGecko** — EWYON 전용
+
+### USD/KRW 환율
+`frankfurter.dev` → `open.er-api.com` 폴백
+
+## 거래소 상장 종목 (2026-06-27 확인)
+
+| 종목 | KRX | Binance | Bybit | OKX | Hyperliquid |
+|------|-----|---------|-------|-----|-------------|
+| 삼성전자 | 005930 | SAMSUNGUSDT | SAMSUNGUSDT | SAMSUNG-USDT-SWAP | — |
+| SK하이닉스 | 000660 | SKHYNIXUSDT | SKHYNIXUSDT | SKHYNIX-USDT-SWAP | SKHX |
+| 현대차 | 005380 | HYUNDAIUSDT | HYUNDAIUSDT | HYUNDAI-USDT-SWAP | — |
+
+## 배포 구조
+
+```
+GitHub (kky922/k-stock-after)
+  └─ Netlify 자동 배포 → kstock-monitor.netlify.app
+
+Cloudflare Worker (orange-sunset-3ab4)
+  └─ Yahoo Finance CORS 프록시 (KRX 시세용)
 ```
 
-브라우저에서 엽니다.
+GitHub push 시 Netlify가 자동으로 재배포합니다.
 
-```text
-http://127.0.0.1:8765/index.html
+## 괴리율 계산식
+
 ```
-
-## API
-
-```text
-GET /api/health
-GET /api/krx-prices?symbols=005930,000660,005380
-GET /api/fx/usdkrw
+외화시세 원화환산 = 크립토 USD 시세 × USD/KRW
+괴리율 = (외화시세 원화환산 − KOSPI 원화시세) / KOSPI 원화시세 × 100
 ```
-
-`/api/krx-prices`는 `/Users/kangkuyun/stock_bot/kis_api.py`의 `KISAPI.get_stock_price()`만 사용합니다. 매수/매도 API는 연결하지 않습니다.
-
-## 비교 공식
-
-```text
-외화시세 원화환산 = 크립토 외화시세 × USD/KRW
-괴리율 = (외화시세 원화환산 - 코스피 원화시세) / 코스피 원화시세 × 100
-```
-
-## 데이터 표시 기준
-
-- 코스피 원화시세: KIS 실시간, 실패 시 마지막 성공 또는 샘플
-- 크립토 외화시세: CoinGecko 또는 Hyperliquid에서 실제 심볼이 잡히는 경우만 표시
-- 심볼이 안 잡히는 종목: `심볼 미확인`, `비교 대기`로 표시
-- EWYON: 한국 ETF 토큰으로 유지하되, 삼성전자/하이닉스 개별주 비교와 분리
-
-## 현재 감시 종목
-
-- 삼성전자 `005930`
-- SK하이닉스 `000660`
-- 현대차 `005380`
-- EWYON `ishares-msci-south-korea-etf-ondo-tokenized`
 
 ## 주의
 
-크립토거래소의 토큰/Perp 가격은 실제 주식 소유권, 배당, 의결권과 다를 수 있습니다. 가격 소스가 확인되지 않은 종목은 괴리율을 계산하지 않습니다.
+크립토거래소의 퍼페추얼은 실제 주식 소유권·배당·의결권과 다릅니다. 심볼이 확인된 종목만 괴리율을 표시합니다.
