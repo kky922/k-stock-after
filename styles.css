@@ -725,6 +725,10 @@ main {
     font-size: 12px;
   }
 
+  .quote-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .detail-link {
     min-height: 42px;
     font-size: 15px;

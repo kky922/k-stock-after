@@ -854,7 +854,7 @@ function formatTime(value) {
 
 function renderAssets(items) {
   // 홈에는 실제 시세 비교가 가능한 confirmed 종목만 표시
-  const comparable = items.filter((asset) => asset.status === "confirmed");
+  const comparable = items.filter((asset) => asset.status === "confirmed" && asset.krxPriceKrw > 0 && asset.tokenPriceKrw > 0);
   const watched = comparable.filter((asset) => state.watchlist.includes(asset.id));
   const ordered = watched.length
     ? [...watched, ...comparable.filter((asset) => !state.watchlist.includes(asset.id))]
