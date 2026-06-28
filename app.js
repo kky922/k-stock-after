@@ -1,5 +1,7 @@
 const FALLBACK_FX_RATE = 1545;
 const API_TIMEOUT_MS = 8000;
+const FAST_REFRESH_MS = 60_000;
+const KRX_REFRESH_MS = 5 * 60_000;
 const CG_TOKEN_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price";
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
 const KRX_PROXY_URL = "https://orange-sunset-3ab4.kangkuyun.workers.dev";
@@ -7,6 +9,10 @@ const KRX_PROXY_URL = "https://orange-sunset-3ab4.kangkuyun.workers.dev";
 let fxRate = FALLBACK_FX_RATE;
 let marketUpdatedAt = new Date().toISOString();
 let fxUpdatedAt = marketUpdatedAt;
+let fastRefreshTimer = null;
+let krxRefreshTimer = null;
+let isFastRefreshing = false;
+let isKrxRefreshing = false;
 
 const apiState = {
   fx: "샘플",
@@ -407,6 +413,7 @@ let assets = kospiAssets.map(buildAsset);
 
 const state = {
   view: "home",
+  activeDetailId: "",
   rankSort: "abs",
   rankFilter: "all",
   watchlist: readJson("watchlist", ["samsung-electronics", "sk-hynix"]),
@@ -514,17 +521,53 @@ function render() {
 }
 
 function apiStatusText() {
-  return `데이터: KRX ${apiState.krx} · 크립토 ${apiState.tokenized} · USD/KRW ${apiState.fx}`;
+  return `데이터: KRX ${apiState.krx} · 크립토 ${apiState.tokenized} · USD/KRW ${apiState.fx} · 자동 갱신 60초`;
 }
 
 async function loadLiveData() {
   render();
   await updateFxRate();
   await Promise.allSettled([updateKrxPrices(), updateCryptoPrices()]);
+  finishMarketRefresh();
+}
+
+async function refreshFastData() {
+  if (isFastRefreshing || document.hidden) return;
+  isFastRefreshing = true;
+  try {
+    await updateFxRate();
+    await updateCryptoPrices();
+    finishMarketRefresh();
+  } finally {
+    isFastRefreshing = false;
+  }
+}
+
+async function refreshKrxData() {
+  if (isKrxRefreshing || document.hidden) return;
+  isKrxRefreshing = true;
+  try {
+    await updateKrxPrices();
+    finishMarketRefresh();
+  } finally {
+    isKrxRefreshing = false;
+  }
+}
+
+function finishMarketRefresh() {
   calculatePremiums();
   marketUpdatedAt = new Date().toISOString();
   for (const asset of assets) asset.updatedAt = marketUpdatedAt;
   render();
+  if (state.view === "detail" && state.activeDetailId) {
+    showDetail(state.activeDetailId);
+  }
+}
+
+function startAutoRefresh() {
+  if (fastRefreshTimer || krxRefreshTimer) return;
+  fastRefreshTimer = setInterval(refreshFastData, FAST_REFRESH_MS);
+  krxRefreshTimer = setInterval(refreshKrxData, KRX_REFRESH_MS);
 }
 
 async function fetchJson(url, options = {}) {
@@ -871,7 +914,7 @@ async function updateFxRate() {
 function calculatePremiums() {
   for (const asset of assets) {
     if (asset.tokenPriceUsd > 0) {
-      asset.tokenPriceKrw = asset.tokenPriceKrw || asset.tokenPriceUsd * fxRate;
+      asset.tokenPriceKrw = asset.tokenPriceUsd * fxRate;
     }
     if (asset.tokenPriceKrw > 0 && asset.krxPriceKrw > 0) {
       asset.premiumDiffKrw = asset.tokenPriceKrw - asset.krxPriceKrw;
@@ -1091,6 +1134,7 @@ function renderUniverse() {
 
 function showView(view) {
   state.view = view;
+  if (view !== "detail") state.activeDetailId = "";
   document.querySelectorAll(".view").forEach((el) => el.classList.toggle("is-active", el.id === `${view}View`));
   document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("is-active", el.dataset.view === view));
 }
@@ -1098,6 +1142,7 @@ function showView(view) {
 function showDetail(id) {
   const asset = assets.find((item) => item.id === id);
   if (!asset) return;
+  state.activeDetailId = id;
   const product = productLabel(asset);
   const risk = productRiskLabel(asset);
   document.querySelector("#detailContent").innerHTML = `
@@ -1188,11 +1233,16 @@ document.querySelector("#alertForm").addEventListener("submit", (event) => {
   render();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshFastData();
+});
+
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const detailId = params.get("detail");
   if (detailId) showDetail(detailId);
   await loadLiveData();
+  startAutoRefresh();
   if (detailId) showDetail(detailId);
 }
 
