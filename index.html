@@ -22,8 +22,9 @@
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">K-Stock After</p>
-        <h1>온체인 코스피 모니터</h1>
+        <p class="eyebrow">KStock Monitor</p>
+        <h1>한국주식 온체인 참고가</h1>
+        <p class="header-copy">한국장 닫힌 뒤에도 움직이는 한국주식 참고가</p>
       </div>
       <button id="refreshBtn" class="icon-button" type="button" title="새로고침" aria-label="새로고침">↻</button>
     </header>
@@ -31,17 +32,18 @@
     <main>
       <div class="status-strip" aria-label="시장 요약">
         <div><span>USD/KRW</span><strong id="fxRate">-</strong></div>
-        <div><span>KOSPI</span><strong id="krxState">-</strong></div>
+        <div><span>한국장</span><strong id="krxState">-</strong></div>
         <div><span>크립토</span><strong id="cryptoState">-</strong></div>
-        <div><span id="lastUpdated" style="font-size:11px;color:var(--muted)">-</span><strong id="fxSource" style="font-size:11px;color:var(--muted)">-</strong></div>
+        <div><span>마지막 업데이트</span><strong id="lastUpdated">-</strong></div>
       </div>
+      <p id="fxSource" class="source-summary">-</p>
       <p id="apiStatus" class="api-status">데이터 로딩 중...</p>
 
       <section id="homeView" class="view is-active">
         <div class="section-title">
-          <h2>코스피 외화시세 비교</h2>
+          <h2>KRX 대비 괴리율</h2>
         </div>
-        <p class="home-desc">해외 크립토 거래소에서 거래되는 한국 주식의 달러 가격을 원화로 환산해, 코스피 실제 가격과 비교합니다. 괴리율이 클수록 크립토 거래소와 실제 주가의 차이가 큽니다.</p>
+        <p class="home-desc">크립토 시장 가격을 원화로 바꿔 KRX 기준가와 비교합니다.</p>
         <div id="assetList" class="asset-list"></div>
       </section>
 

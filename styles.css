@@ -1,14 +1,14 @@
 :root {
   color-scheme: light;
-  --bg: #f5f7f2;
+  --bg: #f7f8fa;
   --ink: #101820;
   --muted: #667085;
-  --line: #d8ded5;
+  --line: #e5e7eb;
   --panel: #ffffff;
-  --accent: #0f766e;
-  --accent-dark: #115e59;
-  --good: #0f8a4b;
-  --bad: #c2410c;
+  --accent: #101820;
+  --accent-dark: #0b1220;
+  --good: #d92d20;
+  --bad: #2563eb;
   --warn: #a16207;
 }
 
@@ -22,6 +22,7 @@ body {
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   padding-bottom: 86px;
+  overflow-x: hidden;
 }
 
 button,
@@ -35,6 +36,8 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  width: min(480px, 100%);
+  margin: 0 auto;
   padding: 22px 18px 14px;
   background: #101820;
   color: #fff;
@@ -56,12 +59,20 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(25px, 7vw, 42px);
+  font-size: 24px;
   line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.header-copy {
+  margin: 8px 0 0;
+  color: #d1d5db;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 main {
-  width: min(1040px, 100%);
+  width: min(480px, 100%);
   margin: 0 auto;
   padding: 16px;
 }
@@ -80,7 +91,8 @@ main {
 }
 
 .status-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   gap: 0;
   margin-top: 8px;
@@ -91,16 +103,21 @@ main {
 }
 
 .status-strip div {
-  flex: 1;
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 6px;
   padding: 8px 12px;
   border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
 }
 
+.status-strip div:nth-child(2n),
 .status-strip div:last-child {
   border-right: none;
+}
+
+.status-strip div:nth-last-child(-n + 2) {
+  border-bottom: none;
 }
 
 .api-status {
@@ -110,6 +127,12 @@ main {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.source-summary {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .asset-card,
@@ -219,13 +242,13 @@ main {
 
 .asset-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
 .universe-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -326,9 +349,14 @@ main {
 .detail-grid,
 .quote-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
   margin: 8px 0;
+}
+
+.detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .price-grid strong,
@@ -352,30 +380,47 @@ main {
   font-size: 11px;
 }
 
+.quote-grid small,
+.detail-grid small,
+.data-state-list small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.detail-grid strong {
+  overflow-wrap: anywhere;
+}
+
 .hero-price {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 8px 0 6px;
+  display: grid;
+  gap: 5px;
+  margin: 12px 0 4px;
 }
 
 .hero-price span {
   color: var(--muted);
   font-size: 11px;
-  flex: 0 0 100%;
-  margin-bottom: -4px;
 }
 
 .hero-price strong {
-  font-size: 20px;
+  font-size: 26px;
   line-height: 1.1;
 }
 
 .hero-price em {
   color: var(--muted);
-  font-size: 16px;
+  font-size: 18px;
   font-style: normal;
+  font-weight: 800;
+}
+
+.diff-row {
+  margin: 0 0 10px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -392,7 +437,8 @@ main {
 }
 
 .meta-row,
-.filter-row {
+.filter-row,
+.badge-row {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
@@ -405,6 +451,25 @@ main {
   color: #344054;
   font-size: 11px;
   font-weight: 600;
+}
+
+.badge-row {
+  margin-top: 8px;
+}
+
+.status-badge.product {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.status-badge.risk {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.status-badge.data {
+  background: #f2f4f7;
+  color: #475467;
 }
 
 .card-timestamp {
@@ -464,17 +529,19 @@ main {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin: 14px 0;
+  margin: 10px 0 8px;
 }
 
 .detail-header p {
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   color: var(--muted);
+  font-size: 14px;
 }
 
 .detail-header h2 {
   margin: 0;
-  font-size: 30px;
+  font-size: 26px;
+  line-height: 1.05;
 }
 
 .detail-header > strong {
@@ -482,13 +549,64 @@ main {
 }
 
 .detail-grid > div {
-  padding: 13px;
+  padding: 10px;
+}
+
+.premium-hero,
+.data-state-list > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.premium-hero {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0;
+  padding: 14px;
+}
+
+.premium-hero span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.premium-hero strong {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.premium-hero em {
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .source-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.data-state-list {
+  display: grid;
+  gap: 6px;
+}
+
+.data-state-list > div {
+  padding: 10px;
+}
+
+.data-state-list span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.data-state-list strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 14px;
 }
 
 .source-grid > div {
@@ -520,7 +638,7 @@ main {
 }
 
 .small-heading {
-  margin: 18px 0 10px;
+  margin: 14px 0 8px;
 }
 
 .market-list {
@@ -557,15 +675,15 @@ main {
 
 .risk-note,
 .risk-panel {
-  margin-top: 16px;
+  margin-top: 12px;
   border-left: 4px solid var(--warn);
   background: #fffbeb;
-  padding: 14px;
+  padding: 12px;
 }
 
 .risk-panel p,
 .risk-note p {
-  margin-bottom: 8px;
+  margin: 4px 0 0;
 }
 
 .alert-form {
@@ -624,18 +742,10 @@ main {
 
 @media (max-width: 720px) {
   main {
-    padding: 10px;
-  }
-
-  .asset-list,
-  .universe-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    padding: 12px;
   }
 
   .price-grid,
-  .detail-grid,
-  .quote-grid,
   .source-grid,
   .alert-form {
     grid-template-columns: 1fr;
@@ -646,7 +756,7 @@ main {
   }
 
   h1 {
-    font-size: 22px;
+    font-size: 23px;
   }
 
   .eyebrow {
@@ -668,7 +778,7 @@ main {
   }
 
   .status-strip div {
-    padding: 7px 10px;
+    padding: 8px 10px;
   }
 }
 
@@ -702,11 +812,11 @@ main {
   }
 
   .quote-grid strong {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .hero-price strong {
-    font-size: 22px;
+    font-size: 26px;
   }
 
   .hero-price em {
@@ -729,6 +839,19 @@ main {
     grid-template-columns: 1fr 1fr;
   }
 
+  .detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .detail-grid strong {
+    font-size: 14px;
+  }
+
+  .detail-grid small {
+    font-size: 10px;
+  }
+
   .detail-link {
     min-height: 42px;
     font-size: 15px;
@@ -747,7 +870,7 @@ main {
   .bottom-nav {
     right: 50%;
     left: 50%;
-    width: min(720px, calc(100% - 32px));
+    width: min(480px, calc(100% - 32px));
     transform: translateX(-50%);
     border: 1px solid var(--line);
     border-radius: 12px 12px 0 0;
