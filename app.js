@@ -467,6 +467,13 @@ function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function migrateStoredMarketData() {
+  const cachedFx = readJson("lastFxRate", null);
+  if (cachedFx?.label && String(cachedFx.label).includes("USD")) {
+    localStorage.removeItem("lastFxRate");
+  }
+}
+
 function premiumClass(value) {
   if (value == null) return "neutral";
   if (value > 0) return "positive";
@@ -1384,6 +1391,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 async function init() {
+  migrateStoredMarketData();
   configureRealtimeUrl();
   const params = new URLSearchParams(window.location.search);
   const detailId = params.get("detail");
