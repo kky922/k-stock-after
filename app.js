@@ -996,6 +996,10 @@ async function updateFxRate() {
   let fallbackCandidate = null;
   const sources = [
     async () => {
+      const data = await fetchJson("/.netlify/functions/usdtkrw");
+      return { rate: Number(data?.rate), label: data?.source || "Upbit" };
+    },
+    async () => {
       const data = await fetchJson("https://api.upbit.com/v1/ticker?markets=KRW-USDT");
       return { rate: Number(data?.[0]?.trade_price), label: "Upbit" };
     },
