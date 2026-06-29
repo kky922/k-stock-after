@@ -119,6 +119,14 @@ def fetch_binance_quote(symbol: str) -> dict[str, Any]:
 
 
 def read_fx_rate() -> float:
+    try:
+        data = fetch_json("https://api.upbit.com/v1/ticker?markets=KRW-USDT", timeout=4.0)
+        rate = float((data[0] if data else {}).get("trade_price") or 0)
+        if rate > 1000:
+            return rate
+    except Exception:
+        pass
+
     for url in (
         "https://api.frankfurter.dev/v1/latest?base=USD&symbols=KRW",
         "https://open.er-api.com/v6/latest/USD",

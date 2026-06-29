@@ -33,8 +33,8 @@
 4. **Hyperliquid** `api.hyperliquid.xyz` — HL 전용 심볼 (SKHX 등)
 5. **CoinGecko** — EWYON 전용
 
-### USD/KRW 환율
-`frankfurter.dev` → `open.er-api.com` 폴백
+### USDT/KRW 환산율
+`Upbit KRW-USDT`를 우선 사용합니다. 실패 시 `frankfurter.dev` → `open.er-api.com` USD/KRW 일일 환율로 폴백합니다.
 
 ## 거래소 상장 종목 (2026-06-27 확인)
 
@@ -88,7 +88,7 @@ https://kstock-monitor.netlify.app/?realtime=https://YOUR_HTTPS_TUNNEL/quotes.js
 ## 괴리율 계산식
 
 ```
-외화시세 원화환산 = 크립토 USD 시세 × USD/KRW
+외화시세 원화환산 = 크립토 USDT 시세 × USDT/KRW
 괴리율 = (외화시세 원화환산 − KOSPI 원화시세) / KOSPI 원화시세 × 100
 ```
 

@@ -528,7 +528,7 @@ function render() {
 }
 
 function apiStatusText() {
-  return `데이터: KRX ${apiState.krx} · 크립토 ${apiState.tokenized} · USD/KRW ${apiState.fx} · 자동 갱신 ${realtimeQuotesUrl ? "3초" : "60초"}`;
+  return `데이터: KRX ${apiState.krx} · 크립토 ${apiState.tokenized} · USDT/KRW ${apiState.fx} · 자동 갱신 ${realtimeQuotesUrl ? "3초" : "60초"}`;
 }
 
 async function loadLiveData() {
@@ -989,12 +989,16 @@ async function updateFxRate() {
   let fallbackCandidate = null;
   const sources = [
     async () => {
+      const data = await fetchJson("https://api.upbit.com/v1/ticker?markets=KRW-USDT");
+      return { rate: Number(data?.[0]?.trade_price), label: "Upbit" };
+    },
+    async () => {
       const data = await fetchJson("https://api.frankfurter.dev/v1/latest?base=USD&symbols=KRW");
-      return { rate: Number(data?.rates?.KRW), label: "실시간" };
+      return { rate: Number(data?.rates?.KRW), label: "USD 일일환율" };
     },
     async () => {
       const data = await fetchJson("https://open.er-api.com/v6/latest/USD");
-      return { rate: Number(data?.rates?.KRW), label: "실시간" };
+      return { rate: Number(data?.rates?.KRW), label: "USD 일일환율" };
     }
   ];
 
@@ -1240,7 +1244,7 @@ function conditionLabel(value) {
     premium_rate_lte: "괴리율 <=",
     price_krw_gte: "원화 환산가 >=",
     price_krw_lte: "원화 환산가 <=",
-    fx_gte: "USD/KRW >="
+    fx_gte: "USDT/KRW >="
   }[value] ?? value;
 }
 
@@ -1306,7 +1310,7 @@ function showDetail(id) {
       <div><span>온체인 환산가</span><strong>${formatMoneyKrw(asset.tokenPriceKrw)}</strong><small>가격 기준</small></div>
       <div><span>KRX 체결가</span><strong>${asset.krxPriceKrw > 0 ? won.format(asset.krxPriceKrw) : "기준가 없음"}</strong><small>${asset.krxPriceBasis}</small></div>
       <div><span>Crypto 체결가</span><strong>${formatMoneyUsd(asset.tokenPriceUsd)}</strong><small>${asset.tokenPriceBasis}</small></div>
-      <div><span>USD/KRW</span><strong>${won.format(fxRate)}</strong><small>${apiState.fx} · ${formatClock(fxUpdatedAt)} KST</small></div>
+      <div><span>USDT/KRW</span><strong>${won.format(fxRate)}</strong><small>${apiState.fx} · ${formatClock(fxUpdatedAt)} KST</small></div>
     </section>
     <section class="source-panel">
       <h3 class="small-heading">데이터 상태</h3>
@@ -1314,7 +1318,7 @@ function showDetail(id) {
         <div><span>KRX 가격</span><strong>${asset.krxPriceBasis}</strong><small>마지막 업데이트: ${formatClock(asset.krxUpdatedAt)} KST</small></div>
         <div><span>크립토 가격</span><strong>${asset.tokenPriceBasis}</strong><small>마지막 업데이트: ${formatClock(asset.tokenUpdatedAt)} KST</small></div>
         <div><span>시각 검증</span><strong>${edgeFreshnessLabel(asset)}</strong><small>${asset.edgeValid === true ? "비교 가능" : "조건 확인 필요"}</small></div>
-        <div><span>환율</span><strong>USD/KRW · ${apiState.fx}</strong><small>마지막 업데이트: ${formatClock(fxUpdatedAt)} KST</small></div>
+        <div><span>환산율</span><strong>USDT/KRW · ${apiState.fx}</strong><small>마지막 업데이트: ${formatClock(fxUpdatedAt)} KST</small></div>
         <div><span>매칭 심볼</span><strong>${asset.matchedSymbol || "없음"}</strong><small>24H 거래량: ${usd.format(asset.volume24hUsd || 0)}</small></div>
       </div>
     </section>
