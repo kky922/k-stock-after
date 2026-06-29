@@ -435,14 +435,14 @@ function buildAsset(item) {
     krxName: item.nameKo,
     krxPriceKrw: 0,
     krxSource: "대기",
-    krxPriceBasis: item.krxTicker ? "Yahoo Finance · 전일 종가/지연 시세" : "KRX 기준 없음",
+    krxPriceBasis: item.krxTicker ? "시장 기준가" : "KRX 기준 없음",
     krxUpdatedAt: marketUpdatedAt,
     tokenPriceUsd: 0,
     tokenPriceKrw: 0,
     tokenChange24h: 0,
     volume24hUsd: 0,
     tokenSource: hasSource ? "대기" : "심볼 미확인",
-    tokenPriceBasis: hasSource ? "최근가" : "상장 감시",
+    tokenPriceBasis: hasSource ? "거래소 가격" : "상장 감시",
     tokenUpdatedAt: marketUpdatedAt,
     matchedSymbol: "",
     edgeValid: null,
@@ -482,8 +482,9 @@ function productLabel(asset) {
 }
 
 function productRiskLabel(asset) {
-  if (productLabel(asset) === "PERP") return "실제 주식 아님";
-  if (productLabel(asset) === "Tokenized ETF") return "참고용 가격";
+  if (asset.edgeValid === true) return "A급 비교";
+  if (productLabel(asset) === "PERP") return "파생시장";
+  if (productLabel(asset) === "Tokenized ETF") return "토큰화 가격";
   return "가격 대기";
 }
 
@@ -630,7 +631,7 @@ async function updateKrxPrices() {
     asset.krxName = meta.shortName || asset.nameKo;
     asset.krxPriceKrw = quote.price;
     asset.krxSource = "Yahoo Finance";
-    asset.krxPriceBasis = quote.isIntraday ? "Yahoo Finance · 1분 지연 시세" : "Yahoo Finance · 지연 시세";
+    asset.krxPriceBasis = quote.isIntraday ? "시장 기준가 · 분단위 검증" : "시장 기준가";
     asset.krxUpdatedAt = updatedAt;
     priceCache[asset.krxTicker] = {
       name: asset.krxName,
@@ -657,7 +658,7 @@ async function updateKrxPrices() {
         asset.krxName = row.name || asset.nameKo;
         asset.krxPriceKrw = price;
         asset.krxSource = "마지막 성공";
-        asset.krxPriceBasis = row.basis || "Yahoo Finance · 마지막 성공값";
+        asset.krxPriceBasis = row.basis || "시장 기준가";
         asset.krxUpdatedAt = row.updatedAt || cached.savedAt || marketUpdatedAt;
       }
     }
@@ -695,7 +696,7 @@ async function updateRealtimeSnapshot() {
         asset.krxPriceKrw = krxPrice;
         asset.krxName = row.name || asset.nameKo;
         asset.krxSource = row.krx_source || "KIS";
-        asset.krxPriceBasis = "X9Pro KIS 현재가";
+        asset.krxPriceBasis = row.krx_source || "KIS";
         asset.krxUpdatedAt = row.krx_received_at || data.updated_at || new Date().toISOString();
       }
 
@@ -706,7 +707,7 @@ async function updateRealtimeSnapshot() {
       if (tokenPriceKrw > 0) asset.tokenPriceKrw = tokenPriceKrw;
       if (tokenPriceUsd > 0 || tokenPriceKrw > 0) {
         asset.tokenSource = row.crypto_source || asset.tokenSource || "X9Pro";
-        asset.tokenPriceBasis = "X9Pro 실시간 수집";
+        asset.tokenPriceBasis = row.crypto_source || "Binance Futures";
         asset.tokenUpdatedAt = row.token_received_at || data.updated_at || new Date().toISOString();
         asset.matchedSymbol = row.crypto_symbol || asset.matchedSymbol;
       }
@@ -809,7 +810,7 @@ async function updateCryptoPrices() {
       asset.tokenChange24h = Number(row.tokenChange24h ?? 0);
       asset.volume24hUsd = Number(row.volume24hUsd ?? 0);
       asset.tokenSource = row.tokenSource ? `마지막 성공 · ${row.tokenSource}` : "마지막 성공";
-      asset.tokenPriceBasis = "최근가 · 마지막 성공값";
+      asset.tokenPriceBasis = "거래소 가격";
       asset.matchedSymbol = row.matchedSymbol || "";
       asset.tokenUpdatedAt = row.tokenUpdatedAt || cached.savedAt || marketUpdatedAt;
     }
@@ -841,7 +842,7 @@ async function updateCoinGeckoPrices() {
       asset.tokenChange24h = Number(item.usd_24h_change ?? 0);
       asset.volume24hUsd = Number(item.usd_24h_vol ?? 0);
       asset.tokenSource = "CoinGecko";
-      asset.tokenPriceBasis = "CoinGecko · 최근가";
+      asset.tokenPriceBasis = "CoinGecko 가격";
       asset.matchedSymbol = asset.tokenLabel;
       asset.tokenUpdatedAt = new Date().toISOString();
       updated += 1;
@@ -876,7 +877,7 @@ async function updateBinancePrices() {
       asset.tokenChange24h = Number(stat.priceChangePercent ?? 0);
       asset.volume24hUsd = Number(stat.quoteVolume ?? 0);
       asset.tokenSource = `Binance · ${asset.binanceSymbol}`;
-      asset.tokenPriceBasis = "Binance Futures · 최근가";
+      asset.tokenPriceBasis = "Binance Futures 체결가";
       asset.matchedSymbol = asset.binanceSymbol;
       asset.tokenUpdatedAt = new Date().toISOString();
       updated += 1;
@@ -904,7 +905,7 @@ async function updateBybitPrices(targets) {
       asset.tokenChange24h = Number(item.price24hPcnt ?? 0) * 100;
       asset.volume24hUsd = Number(item.turnover24h ?? 0);
       asset.tokenSource = `Bybit · ${asset.bybitSymbol}`;
-      asset.tokenPriceBasis = "Bybit · 최근가";
+      asset.tokenPriceBasis = "Bybit 체결가";
       asset.matchedSymbol = asset.bybitSymbol;
       asset.tokenUpdatedAt = new Date().toISOString();
       updated += 1;
@@ -932,7 +933,7 @@ async function updateOKXPrices(targets) {
       asset.tokenChange24h = 0;
       asset.volume24hUsd = Number(item.volCcy24h ?? 0) * price;
       asset.tokenSource = `OKX · ${asset.okxSymbol}`;
-      asset.tokenPriceBasis = "OKX · 최근가";
+      asset.tokenPriceBasis = "OKX 체결가";
       asset.matchedSymbol = asset.okxSymbol;
       asset.tokenUpdatedAt = new Date().toISOString();
       updated += 1;
@@ -969,7 +970,7 @@ async function updateHyperliquidPrices() {
         asset.tokenPriceUsd = tokenUsd;
         asset.tokenPriceKrw = tokenUsd * fxRate;
         asset.tokenSource = `Hyperliquid · ${matched}`;
-        asset.tokenPriceBasis = "Hyperliquid · 최근가";
+        asset.tokenPriceBasis = "Hyperliquid 체결가";
         asset.matchedSymbol = matched;
         asset.tokenUpdatedAt = new Date().toISOString();
       }
@@ -1078,9 +1079,9 @@ function formatClock(value) {
 }
 
 function edgeFreshnessLabel(asset) {
-  if (!realtimeQuotesUrl || asset.edgeValid == null) return "참고용";
+  if (!realtimeQuotesUrl || asset.edgeValid == null) return "가격 검증";
   const skew = Number.isFinite(asset.quoteSkewMs) ? `${(asset.quoteSkewMs / 1000).toFixed(1)}초차` : "시세차 확인중";
-  return asset.edgeValid ? `유효 · ${skew}` : `무효 · ${skew}`;
+  return asset.edgeValid ? `동기화됨 · ${skew}` : `시각차 초과 · ${skew}`;
 }
 
 function configureRealtimeUrl() {
@@ -1138,14 +1139,14 @@ function assetCard(asset) {
       <div class="diff-row ${premiumClass(asset.premiumRate)}">${formatSignedMoneyKrw(asset.premiumDiffKrw)}</div>
       <div class="quote-grid">
         <div>
-          <span>KRX 기준가</span>
+          <span>KRX 체결가</span>
           <strong>${asset.krxPriceKrw > 0 ? won.format(asset.krxPriceKrw) : "기준가 없음"}</strong>
           <small>${asset.krxPriceBasis}</small>
         </div>
         <div>
-          <span>크립토 외화가</span>
+          <span>Crypto 체결가</span>
           <strong>${formatMoneyUsd(asset.tokenPriceUsd)}</strong>
-          <small>${sourceName(asset.tokenSource)} · 최근가</small>
+          <small>${asset.tokenPriceBasis}</small>
         </div>
       </div>
       <div class="meta-row">
@@ -1302,16 +1303,17 @@ function showDetail(id) {
       <em class="${premiumClass(asset.premiumRate)}">${formatSignedMoneyKrw(asset.premiumDiffKrw)}</em>
     </section>
     <section class="detail-grid">
-      <div><span>온체인 환산가</span><strong>${formatMoneyKrw(asset.tokenPriceKrw)}</strong><small>최근가 기준</small></div>
-      <div><span>KRX 기준가</span><strong>${asset.krxPriceKrw > 0 ? won.format(asset.krxPriceKrw) : "기준가 없음"}</strong><small>지연/종가 기준</small></div>
-      <div><span>크립토 외화가</span><strong>${formatMoneyUsd(asset.tokenPriceUsd)}</strong><small>${sourceName(asset.tokenSource)} · 최근가</small></div>
+      <div><span>온체인 환산가</span><strong>${formatMoneyKrw(asset.tokenPriceKrw)}</strong><small>가격 기준</small></div>
+      <div><span>KRX 체결가</span><strong>${asset.krxPriceKrw > 0 ? won.format(asset.krxPriceKrw) : "기준가 없음"}</strong><small>${asset.krxPriceBasis}</small></div>
+      <div><span>Crypto 체결가</span><strong>${formatMoneyUsd(asset.tokenPriceUsd)}</strong><small>${asset.tokenPriceBasis}</small></div>
       <div><span>USD/KRW</span><strong>${won.format(fxRate)}</strong><small>${apiState.fx} · ${formatClock(fxUpdatedAt)} KST</small></div>
     </section>
     <section class="source-panel">
       <h3 class="small-heading">데이터 상태</h3>
       <div class="data-state-list">
-        <div><span>KRX 기준가</span><strong>${asset.krxPriceBasis}</strong><small>마지막 업데이트: ${formatClock(asset.krxUpdatedAt)} KST</small></div>
+        <div><span>KRX 가격</span><strong>${asset.krxPriceBasis}</strong><small>마지막 업데이트: ${formatClock(asset.krxUpdatedAt)} KST</small></div>
         <div><span>크립토 가격</span><strong>${asset.tokenPriceBasis}</strong><small>마지막 업데이트: ${formatClock(asset.tokenUpdatedAt)} KST</small></div>
+        <div><span>시각 검증</span><strong>${edgeFreshnessLabel(asset)}</strong><small>${asset.edgeValid === true ? "비교 가능" : "조건 확인 필요"}</small></div>
         <div><span>환율</span><strong>USD/KRW · ${apiState.fx}</strong><small>마지막 업데이트: ${formatClock(fxUpdatedAt)} KST</small></div>
         <div><span>매칭 심볼</span><strong>${asset.matchedSymbol || "없음"}</strong><small>24H 거래량: ${usd.format(asset.volume24hUsd || 0)}</small></div>
       </div>
