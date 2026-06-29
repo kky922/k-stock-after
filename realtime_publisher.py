@@ -12,6 +12,7 @@ import json
 import sys
 import threading
 import time
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -65,6 +66,13 @@ def load_kis_client():
         raise RuntimeError(f"stock_bot not found: {STOCK_BOT_DIR}")
     if str(STOCK_BOT_DIR) not in sys.path:
         sys.path.insert(0, str(STOCK_BOT_DIR))
+    warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL.*")
+    try:
+        from urllib3.exceptions import NotOpenSSLWarning
+
+        warnings.filterwarnings("ignore", category=NotOpenSSLWarning)
+    except Exception:
+        pass
     from kis_api import KISAPI  # type: ignore
 
     return KISAPI()
@@ -110,13 +118,7 @@ def fetch_binance_quote(symbol: str) -> dict[str, Any]:
     }
 
 
-def read_fx_rate(kis: Any) -> float:
-    try:
-        rate = float(kis.get_exchange_rate())
-        if rate > 1000 and rate != 1350.0:
-            return rate
-    except Exception:
-        pass
+def read_fx_rate() -> float:
     for url in (
         "https://api.frankfurter.dev/v1/latest?base=USD&symbols=KRW",
         "https://open.er-api.com/v6/latest/USD",
@@ -136,7 +138,7 @@ def read_fx_rate(kis: Any) -> float:
 
 def build_snapshot(kis: Any, interval_sec: float, max_skew_ms: int) -> dict[str, Any]:
     errors: dict[str, str] = {}
-    fx_rate = read_fx_rate(kis)
+    fx_rate = read_fx_rate()
     prices: dict[str, dict[str, Any]] = {}
 
     for asset in ASSETS:
