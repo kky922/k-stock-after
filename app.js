@@ -653,6 +653,7 @@ async function updateKrxPrices() {
 function extractKrxQuote(data) {
   const result = data?.chart?.result?.[0] ?? {};
   const meta = result.meta ?? {};
+  const isIntraday = meta.dataGranularity === "1m";
   const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];
   const closes = result.indicators?.quote?.[0]?.close;
 
@@ -664,7 +665,7 @@ function extractKrxQuote(data) {
           meta,
           price,
           timestamp: Number(timestamps[i] ?? meta.regularMarketTime ?? 0),
-          isIntraday: true
+          isIntraday
         };
       }
     }
