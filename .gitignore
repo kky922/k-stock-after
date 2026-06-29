@@ -1,4 +1,5 @@
 server.py
 .playwright-cli/
+realtime/
 *.md
 !README.md

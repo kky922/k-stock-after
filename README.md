@@ -14,13 +14,16 @@
 | `sw.js` | Service Worker (PWA 오프라인 캐시) |
 | `manifest.webmanifest` | PWA 메타데이터 |
 | `krx-worker.js` | Cloudflare Worker — Yahoo Finance CORS 프록시 |
+| `realtime_publisher.py` | X9Pro 로컬 실시간 발행기 — KIS 키는 로컬에만 보관 |
 
 `server.py`는 개인 KIS API 키가 포함되어 git에 포함되지 않습니다.
 
 ## 데이터 소스
 
 ### KOSPI 원화시세
-Yahoo Finance (`query2.finance.yahoo.com`) — Cloudflare Worker 프록시를 통해 CORS 우회
+기본값은 Yahoo Finance (`query2.finance.yahoo.com`) — Cloudflare Worker 프록시를 통해 CORS 우회.
+
+엣지 탐지용으로는 X9Pro 로컬 실시간 발행기를 먼저 사용합니다. KIS 키는 X9Pro에만 있고, 웹은 발행기가 만든 가격 JSON만 읽습니다.
 
 ### 크립토 외화시세 (USD 퍼페추얼)
 우선순위 폴백 체인:
@@ -49,9 +52,38 @@ GitHub (kky922/k-stock-after)
 
 Cloudflare Worker (orange-sunset-3ab4)
   └─ Yahoo Finance CORS 프록시 (KRX 시세용)
+
+X9Pro realtime publisher
+  └─ KIS 현재가 + Binance Futures 가격 수집
+  └─ quotes.json 발행
+  └─ 웹은 ?realtime=https://.../quotes.json 으로 연결
 ```
 
 GitHub push 시 Netlify가 자동으로 재배포합니다.
+
+## X9Pro 실시간 모드
+
+로컬에서 먼저 1회 검증:
+
+```bash
+cd "/Volumes/X9Pro/projects/stock monitor"
+PYTHONDONTWRITEBYTECODE=1 python3 realtime_publisher.py --once
+```
+
+계속 실행:
+
+```bash
+cd "/Volumes/X9Pro/projects/stock monitor"
+PYTHONDONTWRITEBYTECODE=1 python3 realtime_publisher.py --interval 3 --max-skew-ms 2000
+```
+
+웹 연결:
+
+```text
+https://kstock-monitor.netlify.app/?realtime=https://YOUR_HTTPS_TUNNEL/quotes.json
+```
+
+화면에서 `유효 · 1.2초차`처럼 보이면 엣지 계산에 사용할 수 있고, `무효`면 KRX와 크립토 가격 시각 차이가 커서 괴리율을 숨깁니다.
 
 ## 괴리율 계산식
 

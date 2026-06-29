@@ -2,6 +2,8 @@ const FALLBACK_FX_RATE = 1545;
 const API_TIMEOUT_MS = 8000;
 const FAST_REFRESH_MS = 60_000;
 const KRX_REFRESH_MS = 60_000;
+const REALTIME_REFRESH_MS = 3_000;
+const REALTIME_MAX_STALE_MS = 15_000;
 const CG_TOKEN_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price";
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
 const KRX_PROXY_URL = "https://orange-sunset-3ab4.kangkuyun.workers.dev";
@@ -9,6 +11,7 @@ const KRX_PROXY_URL = "https://orange-sunset-3ab4.kangkuyun.workers.dev";
 let fxRate = FALLBACK_FX_RATE;
 let marketUpdatedAt = new Date().toISOString();
 let fxUpdatedAt = marketUpdatedAt;
+let realtimeQuotesUrl = "";
 let fastRefreshTimer = null;
 let krxRefreshTimer = null;
 let isFastRefreshing = false;
@@ -442,6 +445,9 @@ function buildAsset(item) {
     tokenPriceBasis: hasSource ? "최근가" : "상장 감시",
     tokenUpdatedAt: marketUpdatedAt,
     matchedSymbol: "",
+    edgeValid: null,
+    quoteSkewMs: null,
+    quoteFreshnessMs: null,
     premiumRate: null,
     premiumDiffKrw: null,
     updatedAt: marketUpdatedAt,
@@ -521,11 +527,16 @@ function render() {
 }
 
 function apiStatusText() {
-  return `데이터: KRX ${apiState.krx} · 크립토 ${apiState.tokenized} · USD/KRW ${apiState.fx} · 자동 갱신 60초`;
+  return `데이터: KRX ${apiState.krx} · 크립토 ${apiState.tokenized} · USD/KRW ${apiState.fx} · 자동 갱신 ${realtimeQuotesUrl ? "3초" : "60초"}`;
 }
 
 async function loadLiveData() {
   render();
+  const realtimeLoaded = await updateRealtimeSnapshot();
+  if (realtimeLoaded) {
+    finishMarketRefresh();
+    return;
+  }
   await updateFxRate();
   await Promise.allSettled([updateKrxPrices(), updateCryptoPrices()]);
   finishMarketRefresh();
@@ -535,6 +546,11 @@ async function refreshFastData() {
   if (isFastRefreshing || document.hidden) return;
   isFastRefreshing = true;
   try {
+    const realtimeLoaded = await updateRealtimeSnapshot();
+    if (realtimeLoaded) {
+      finishMarketRefresh();
+      return;
+    }
     await updateFxRate();
     await updateCryptoPrices();
     finishMarketRefresh();
@@ -545,6 +561,7 @@ async function refreshFastData() {
 
 async function refreshKrxData() {
   if (isKrxRefreshing || document.hidden) return;
+  if (realtimeQuotesUrl) return;
   isKrxRefreshing = true;
   try {
     await updateKrxPrices();
@@ -566,8 +583,8 @@ function finishMarketRefresh() {
 
 function startAutoRefresh() {
   if (fastRefreshTimer || krxRefreshTimer) return;
-  fastRefreshTimer = setInterval(refreshFastData, FAST_REFRESH_MS);
-  krxRefreshTimer = setInterval(refreshKrxData, KRX_REFRESH_MS);
+  fastRefreshTimer = setInterval(refreshFastData, realtimeQuotesUrl ? REALTIME_REFRESH_MS : FAST_REFRESH_MS);
+  if (!realtimeQuotesUrl) krxRefreshTimer = setInterval(refreshKrxData, KRX_REFRESH_MS);
 }
 
 async function fetchJson(url, options = {}) {
@@ -648,6 +665,72 @@ async function updateKrxPrices() {
     return;
   }
   apiState.krx = "시세 없음";
+}
+
+async function updateRealtimeSnapshot() {
+  if (!realtimeQuotesUrl) return false;
+
+  try {
+    const data = await fetchJson(`${realtimeQuotesUrl}${realtimeQuotesUrl.includes("?") ? "&" : "?"}t=${Date.now()}`);
+    const rows = data?.prices ?? {};
+    const now = Date.now();
+    let updated = 0;
+
+    if (Number(data?.fx_rate) > 1000) {
+      fxRate = Number(data.fx_rate);
+      apiState.fx = "X9Pro";
+      fxUpdatedAt = data.updated_at || new Date().toISOString();
+    }
+
+    for (const asset of assets) {
+      const row = rows[asset.krxTicker] || rows[asset.id];
+      if (!row) continue;
+
+      const krxPrice = Number(row.krx_price ?? row.price ?? 0);
+      const tokenPriceUsd = Number(row.token_price_usd ?? 0);
+      const tokenPriceKrw = Number(row.token_price_krw ?? 0);
+      if (krxPrice <= 0 && tokenPriceUsd <= 0 && tokenPriceKrw <= 0) continue;
+
+      if (krxPrice > 0) {
+        asset.krxPriceKrw = krxPrice;
+        asset.krxName = row.name || asset.nameKo;
+        asset.krxSource = row.krx_source || "KIS";
+        asset.krxPriceBasis = "X9Pro KIS 현재가";
+        asset.krxUpdatedAt = row.krx_received_at || data.updated_at || new Date().toISOString();
+      }
+
+      if (tokenPriceUsd > 0) {
+        asset.tokenPriceUsd = tokenPriceUsd;
+        asset.tokenPriceKrw = tokenPriceUsd * fxRate;
+      }
+      if (tokenPriceKrw > 0) asset.tokenPriceKrw = tokenPriceKrw;
+      if (tokenPriceUsd > 0 || tokenPriceKrw > 0) {
+        asset.tokenSource = row.crypto_source || asset.tokenSource || "X9Pro";
+        asset.tokenPriceBasis = "X9Pro 실시간 수집";
+        asset.tokenUpdatedAt = row.token_received_at || data.updated_at || new Date().toISOString();
+        asset.matchedSymbol = row.crypto_symbol || asset.matchedSymbol;
+      }
+
+      asset.quoteSkewMs = Number(row.skew_ms ?? row.quote_skew_ms ?? NaN);
+      asset.quoteFreshnessMs = Number.isFinite(Date.parse(data.updated_at)) ? now - Date.parse(data.updated_at) : null;
+      asset.edgeValid = row.valid !== false
+        && Number.isFinite(asset.quoteSkewMs)
+        && asset.quoteSkewMs <= Number(data.max_skew_ms ?? 2_000)
+        && (asset.quoteFreshnessMs == null || asset.quoteFreshnessMs <= REALTIME_MAX_STALE_MS);
+      asset.updatedAt = data.updated_at || new Date().toISOString();
+      updated += 1;
+    }
+
+    if (updated > 0) {
+      apiState.krx = `X9Pro KIS (${updated}종목)`;
+      apiState.tokenized = "X9Pro 실시간";
+      return true;
+    }
+  } catch (error) {
+    apiState.krx = "X9Pro 실패";
+    console.info("X9Pro realtime snapshot unavailable, falling back", error);
+  }
+  return false;
 }
 
 function extractKrxQuote(data) {
@@ -955,6 +1038,10 @@ function calculatePremiums() {
     if (asset.tokenPriceKrw > 0 && asset.krxPriceKrw > 0) {
       asset.premiumDiffKrw = asset.tokenPriceKrw - asset.krxPriceKrw;
       asset.premiumRate = ((asset.tokenPriceKrw - asset.krxPriceKrw) / asset.krxPriceKrw) * 100;
+      if (asset.edgeValid === false) {
+        asset.premiumRate = null;
+        asset.premiumDiffKrw = null;
+      }
     } else {
       asset.premiumRate = null;
       asset.premiumDiffKrw = null;
@@ -990,6 +1077,23 @@ function formatClock(value) {
   }).format(new Date(value));
 }
 
+function edgeFreshnessLabel(asset) {
+  if (!realtimeQuotesUrl || asset.edgeValid == null) return "참고용";
+  const skew = Number.isFinite(asset.quoteSkewMs) ? `${(asset.quoteSkewMs / 1000).toFixed(1)}초차` : "시세차 확인중";
+  return asset.edgeValid ? `유효 · ${skew}` : `무효 · ${skew}`;
+}
+
+function configureRealtimeUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("realtime");
+  if (requested) {
+    realtimeQuotesUrl = requested;
+    writeJson("realtimeQuotesUrl", requested);
+    return;
+  }
+  realtimeQuotesUrl = readJson("realtimeQuotesUrl", "");
+}
+
 function renderAssets(items) {
   // 홈에는 확인된 종목을 먼저 보여주고, 시세가 들어오면 괴리율 기준으로 바로 갱신한다.
   const confirmed = items.filter((asset) => asset.status === "confirmed");
@@ -1023,7 +1127,7 @@ function assetCard(asset) {
       <div class="badge-row">
         <span class="status-badge product">${product}</span>
         <span class="status-badge risk">${risk}</span>
-        <span class="status-badge data">참고용</span>
+        <span class="status-badge data">${edgeFreshnessLabel(asset)}</span>
       </div>
       ${matchedAlerts.length ? `<div class="alert-hit">알림 조건 충족</div>` : ""}
       <div class="hero-price">
@@ -1274,6 +1378,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 async function init() {
+  configureRealtimeUrl();
   const params = new URLSearchParams(window.location.search);
   const detailId = params.get("detail");
   if (detailId) showDetail(detailId);
