@@ -1,4 +1,4 @@
-const CACHE_NAME = "k-stock-after-v2";
+const CACHE_NAME = "k-stock-after-v3";
 const STATIC_ASSETS = [
   "./index.html",
   "./app.js",

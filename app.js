@@ -1,7 +1,7 @@
 const FALLBACK_FX_RATE = 1545;
 const API_TIMEOUT_MS = 8000;
 const FAST_REFRESH_MS = 60_000;
-const KRX_REFRESH_MS = 5 * 60_000;
+const KRX_REFRESH_MS = 60_000;
 const CG_TOKEN_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price";
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
 const KRX_PROXY_URL = "https://orange-sunset-3ab4.kangkuyun.workers.dev";
@@ -576,6 +576,7 @@ async function fetchJson(url, options = {}) {
   try {
     const response = await fetch(url, {
       ...options,
+      cache: "no-store",
       signal: controller.signal,
       headers: {
         accept: "application/json",
@@ -595,7 +596,7 @@ async function updateKrxPrices() {
 
   const results = await Promise.allSettled(
     targets.map((asset) =>
-      fetchJson(`${KRX_PROXY_URL}/?s=${asset.krxTicker}`).then((data) => ({ asset, data }))
+      fetchJson(`${KRX_PROXY_URL}/?s=${asset.krxTicker}&t=${Date.now()}`).then((data) => ({ asset, data }))
     )
   );
 
@@ -605,15 +606,21 @@ async function updateKrxPrices() {
   for (const result of results) {
     if (result.status !== "fulfilled") continue;
     const { asset, data } = result.value;
-    const meta = data?.chart?.result?.[0]?.meta;
-    const price = Number(meta?.regularMarketPrice ?? 0);
-    if (price <= 0) continue;
+    const quote = extractKrxQuote(data);
+    if (quote.price <= 0) continue;
+    const meta = quote.meta;
+    const updatedAt = quote.timestamp ? new Date(quote.timestamp * 1000).toISOString() : new Date().toISOString();
     asset.krxName = meta.shortName || asset.nameKo;
-    asset.krxPriceKrw = price;
+    asset.krxPriceKrw = quote.price;
     asset.krxSource = "Yahoo Finance";
-    asset.krxPriceBasis = "Yahoo Finance · 전일 종가/지연 시세";
-    asset.krxUpdatedAt = new Date().toISOString();
-    priceCache[asset.krxTicker] = { name: asset.krxName, price };
+    asset.krxPriceBasis = quote.isIntraday ? "Yahoo Finance · 1분 지연 시세" : "Yahoo Finance · 지연 시세";
+    asset.krxUpdatedAt = updatedAt;
+    priceCache[asset.krxTicker] = {
+      name: asset.krxName,
+      price: quote.price,
+      basis: asset.krxPriceBasis,
+      updatedAt
+    };
     updated += 1;
   }
 
@@ -633,14 +640,42 @@ async function updateKrxPrices() {
         asset.krxName = row.name || asset.nameKo;
         asset.krxPriceKrw = price;
         asset.krxSource = "마지막 성공";
-        asset.krxPriceBasis = "Yahoo Finance · 마지막 성공값";
-        asset.krxUpdatedAt = cached.savedAt || marketUpdatedAt;
+        asset.krxPriceBasis = row.basis || "Yahoo Finance · 마지막 성공값";
+        asset.krxUpdatedAt = row.updatedAt || cached.savedAt || marketUpdatedAt;
       }
     }
     apiState.krx = "마지막 성공";
     return;
   }
   apiState.krx = "시세 없음";
+}
+
+function extractKrxQuote(data) {
+  const result = data?.chart?.result?.[0] ?? {};
+  const meta = result.meta ?? {};
+  const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];
+  const closes = result.indicators?.quote?.[0]?.close;
+
+  if (Array.isArray(closes)) {
+    for (let i = closes.length - 1; i >= 0; i -= 1) {
+      const price = Number(closes[i] ?? 0);
+      if (price > 0) {
+        return {
+          meta,
+          price,
+          timestamp: Number(timestamps[i] ?? meta.regularMarketTime ?? 0),
+          isIntraday: true
+        };
+      }
+    }
+  }
+
+  return {
+    meta,
+    price: Number(meta.regularMarketPrice ?? 0),
+    timestamp: Number(meta.regularMarketTime ?? 0),
+    isIntraday: false
+  };
 }
 
 async function updateCryptoPrices() {
