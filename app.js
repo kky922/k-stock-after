@@ -520,6 +520,7 @@ function formatMoneyUsd(value) {
 }
 
 function render() {
+  document.querySelector("#fxLabel").textContent = apiState.fx ? `USDT/KRW · ${apiState.fx}` : "USDT/KRW";
   document.querySelector("#fxRate").textContent = won.format(fxRate);
   document.querySelector("#krxState").textContent = getKrxState();
   document.querySelector("#cryptoState").textContent = apiState.tokenized || "-";
